@@ -21,5 +21,6 @@ Apologies for the state of the Fritzing file, I'll clean it up when I can be bot
 * 2x Neutrik XLR Sockets ([3](http://cpc.farnell.com/webapp/wcs/stores/servlet/ProductDisplay?catalogId=15002&langId=69&urlRequestType=Base&partNumber=AV19366&storeId=10180) or [5](http://cpc.farnell.com/webapp/wcs/stores/servlet/ProductDisplay?catalogId=15002&langId=69&urlRequestType=Base&partNumber=AV19367&storeId=10180) pins) - £6-12
 * [RGB 5mm Common Cathode LED](http://www.ebay.co.uk/itm/3mm-5mm-LED-LEDs-RED-GREEN-BLUE-WHITE-YELLOW-ORANGE-RGB-UV-1-25-50-100-PACKS-/200921123666?pt=LH_DefaultDomain_3&var=&hash=item2ec7d50b52) - £1
 * [Jumper Wires](http://www.ebay.co.uk/sch/i.html?_odkw=jumper+dupont+wires&_osacat=0&_from=R40&_trksid=p2045573.m570.l1313.TR0.TRC0.H0.Xjumper+dupont+wires+female+to+female.TRS0&_nkw=jumper+dupont+wires+female+to+female&_sacat=0) - £2
+* [16x2 i2c LCD](http://www.ebay.co.uk/sch/i.html?_from=R40&_trksid=p2050601.m570.l1313.TR0.TRC0.H0.X16x2+i2c+lcd.TRS0&_nkw=16x2+i2c+lcd&_sacat=0) - £5
 * Stacking Headers
 * 2x 100Ω Resistor, 1x 47Ω Resistor
