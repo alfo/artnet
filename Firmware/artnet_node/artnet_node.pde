@@ -1,8 +1,8 @@
 /***************************************************************************
 *
 * Title          : Arduino ArtNet Node
-* Version        : v1
-* Last updated   : 16.05.2015
+* Version        : v1.1
+* Last updated   : 18.05.2015
 * Web            : https://newfangled.me, https://alexforey.com
 * Target         : Arduino Mega 2560, Arduino Mega 1280, Arduino Uno
 
@@ -43,6 +43,8 @@
 #include "packets.h"     // headers from libartnet, striped version
 #include <Wire.h>               // Needed for I2C for LCD
 #include <LiquidCrystal_I2C.h>  // Control library for LCD
+#include "WebServer.h" // To allow settings to be changed over network
+#include <EEPROM.h>
 
 // ***************************************************************************************************************
 //                             ***        READ THIS        ***
@@ -50,6 +52,70 @@
 //    hit the reset button on the Arduino to start it up again.
 // ***************************************************************************************************************
 
+#define PREFIX "/artnet"
+WebServer webserver(PREFIX, 80);
+
+
+/************************************
+    Webserver Function Definitions
+************************************/
+
+void softwareRESET() {
+  asm volatile ("  jmp 0");  
+}
+
+void webCmd(WebServer &server, WebServer::ConnectionType type, char *, bool)
+{
+  if (type == WebServer::POST)
+  {
+    bool repeat;
+    char name[16], value[16];
+    do
+    {
+      /* readPOSTparam returns false when there are no more parameters
+       * to read from the input.  We pass in buffers for it to store
+       * the name and value strings along with the length of those
+       * buffers. */
+      repeat = server.readPOSTparam(name, 32, value, 32);
+
+      /* this is a standard string comparison function.  It returns 0
+       * when there's an exact match.  We're looking for a parameter
+       * named "buzz" here. */
+      if (strcmp(name, "output_a") == 0)
+      {
+	/* use the STRing TO Unsigned Long function to turn the string
+	 * version of the delay number into our integer buzzDelay
+	 * variable */
+        EEPROM.write(1, strtoul(value, NULL, 10));
+      }
+      
+      if (strcmp(name, "output_b") == 0)
+      {
+	/* use the STRing TO Unsigned Long function to turn the string
+	 * version of the delay number into our integer buzzDelay
+	 * variable */
+        EEPROM.write(2, strtoul(value, NULL, 10));
+      }
+    } while (repeat);
+    
+    // after procesing the POST data, tell the web browser to reload
+    // the page using a GET method. 
+    server.httpSeeOther(PREFIX);
+    softwareRESET();
+  }
+
+  /* for a GET or HEAD, send the standard "it's all OK headers" */
+  server.httpSuccess();
+
+  /* we don't output the body for a HEAD request */
+  if (type == WebServer::GET)
+  {
+    /* store the HTML in program memory using the P macro */
+    P(message) = 
+"<!DOCTYPE html><html> <head> <title>AF ArtNet Settings</title> <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'/> <style>*{margin: 0;}header{width: 100%; padding: 20px; background: rgb(45,45,55);}h1{color: rgb(220, 220, 220);}h2{color: rgb(100, 100, 100);}body{background: rgb(25,25,35); color: white; font-family: Verdana;}form{background: rgb(45,45,55); padding: 20px; width: 80%; margin: 50px auto;}input, select{display: inline; padding: 10px; width: 100%; margin: 20px auto; -webkit-appearance: none; outline: 0; border: none;}label{display: block;}</style> </head> <body> <header> <h1>AF ArtNet Node Settings</h1> <h2>v1.1 2015</h2> </header> <form action='/artnet' method='post'> <label for='output_a'>Output A</label> <select name='output_a'> <option value='1'>Universe 1</option> <option value='2'>Universe 2</option> </select> <label for='output_a'>Output B</label> <select name='output_b'> <option value='1'>Universe 1</option> <option value='2'>Universe 2</option> </select> <input type='submit' value='Save'> </form> </body></html>";    
+    server.printP(message);
+  }
+}
 
 /************************************
           DMX Definitions
@@ -153,6 +219,9 @@ uint8_t factory_broadcastIp  [4] = {  localIp_a, localIp_b,  localIp_c, localIp_
 uint8_t factory_gateway      [4] = {  gateway_a, gateway_b, gateway_c, gateway_d};
 uint8_t factory_subnetMask  [4] = { subnetMask_a,  subnetMask_b,  subnetMask_c,  subnetMask_d};
 
+int outputA = 1;
+int outputB = 2;
+
 /************************************
     Standard Function Definitions
 ************************************/
@@ -213,6 +282,17 @@ void setup()
   Udp.begin(ArtNode.localPort);
   send_reply(BROADCAST, (uint8_t *)&ArtPollReply, sizeof(ArtPollReply));
 
+  webserver.setDefaultCommand(&webCmd);
+  
+  outputA = EEPROM.read(1);
+  outputB = EEPROM.read(2);
+  
+  if (outputA < 1 || outputA > 16)
+    outputA = 1;
+    
+  if (outputB < 1 || outputB > 16)
+    outputB = 2;
+
   // Init the LED Pins
   pinMode(redPin, OUTPUT);
   pinMode(greenPin, OUTPUT);
@@ -230,7 +310,12 @@ void setup()
   lcd.print(localIp_c);
   lcd.print(".");
   lcd.print(localIp_d);
-
+  
+  lcd.setCursor(9, 1);
+  lcd.print("A");
+  lcd.print((int)EEPROM.read(1));
+  lcd.print(" B");
+  lcd.print((int)EEPROM.read(2));
 }
 
 void loop()
@@ -250,6 +335,8 @@ void loop()
   }
 
   updateLED();
+  
+  webserver.processConnection();
 
   previous_state = online;
   loop_no++;
@@ -282,7 +369,7 @@ void updateLED() {
 
 // Checks whether ArtNet UDP packets have been received recently
 void checkArtNetOnline() {
-  if (ArtNetOnline < 500) {
+  if (ArtNetOnline < 2500) {
     online = true;
   } else {
     online = false;
@@ -361,25 +448,18 @@ uint16_t get_packet_type(uint8_t *packet) {
 
 // Send the DMX data off to one of the universes
 int handle_dmx(artnet_dmx_t *packet) {
+  
+  
 
-  if(packet->universe == ArtNode.swout[0]) {
+  if(packet->universe == ArtNode.swout[outputA - 1]) {
     #if defined(USE_UNIVERSE_0)
       memcpy ((uint8_t *)ArduinoDmx0.TxBuffer, (uint8_t *)packet->data, ARTNET_DMX_LENGTH);
     #endif
   }
-  else if(packet->universe == ArtNode.swout[1]) {
+  
+  if(packet->universe == ArtNode.swout[outputB - 1]) {
     #if defined(USE_UNIVERSE_1)
       memcpy ((uint8_t *)ArduinoDmx1.TxBuffer, (uint8_t *)packet->data, ARTNET_DMX_LENGTH);
-    #endif
-  }
-  else if(packet->universe == ArtNode.swout[2]) {
-    #if defined(USE_UNIVERSE_2)
-      memcpy ((uint8_t *)ArduinoDmx2.TxBuffer, (uint8_t *)packet->data, ARTNET_DMX_LENGTH);
-    #endif
-  }
-  else if(packet->universe == ArtNode.swout[3]) {
-    #if defined(USE_UNIVERSE_3)
-      memcpy ((uint8_t *)ArduinoDmx3.TxBuffer, (uint8_t *)packet->data, ARTNET_DMX_LENGTH);
     #endif
   }
 }
@@ -437,10 +517,13 @@ void fill_art_node(artnet_node_t *node)
   node->sub            = 0x00;        // low byte of the Node Subnet Address
 
   // **************************** art-net address of universes **********************************
-  node->swout      [0] = 0x00;        // This array defines the 8 bit Universe address of the available output channels.
-  node->swout      [1] = 0x01;        // values from 0x00 to 0xFF
-  node->swout      [2] = 0x02;
-  node->swout      [3] = 0x03;
+          // This array defines the 8 bit Universe address of the available output channels.
+
+  
+  node->swout[0] = 0x00;
+  node->swout[1] = 0x01;
+  node->swout[2] = 0x02;
+  node->swout[3] = 0x03;
 
   // not implemented yet
   node->swin       [0] = 0x00;        // This array defines the 8 bit Universe address of the available input channels.
@@ -468,7 +551,7 @@ void fill_art_node(artnet_node_t *node)
   node->etsaman[1] = 0;        // The ESTA manufacturer code.
   node->localPort  = 0x1936;   // artnet UDP port is by default 6454 (0x1936)
   node->verH       = 1;        // high byte of Node firmware revision number.
-  node->ver        = 0;        // low byte of Node firmware revision number.
+  node->ver        = 1;        // low byte of Node firmware revision number.
   node->ProVerH    = 0;        // high byte of the Art-Net protocol revision number.
   node->ProVer     = 14;       // low byte of the Art-Net protocol revision number.
   node->oemH       = 0;        // high byte of the oem value.
@@ -518,3 +601,4 @@ void fill_art_poll_reply(artnet_reply_t *poll_reply, artnet_node_t *node)
   poll_reply->swremote        = node->swremote;
   poll_reply->style           = node->style;
 }
+

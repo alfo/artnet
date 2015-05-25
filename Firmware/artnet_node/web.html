@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AF ArtNet Settings</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+    <style>
+    * {
+      margin: 0;
+    }
+
+    header {
+      width: 100%;
+      padding: 20px;
+      background: rgb(45,45,55);
+    }
+
+    h1 {
+      color: rgb(220, 220, 220);
+    }
+
+    h2 {
+      color: rgb(100, 100, 100);
+    }
+
+    body {
+      background: rgb(25,25,35);
+      color: white;
+      font-family: Verdana;
+    }
+
+    form {
+      background: rgb(45,45,55);
+      padding: 20px;
+      width: 80%;
+      margin: 50px auto;
+    }
+
+    input, select {
+      display: inline;
+      padding: 10px;
+      width: 100%;
+      margin: 20px auto;
+      -webkit-appearance: none;
+      outline: 0;
+      border: none;
+    }
+
+    label {
+      display: block;
+    }
+    </style>
+
+  </head>
+
+  <body>
+    <header>
+      <h1>AF ArtNet Node Settings</h1>
+      <h2>v1.1 2015</h2>
+    </header>
+
+    <form action='/artnet' method='post'>
+      <label for='output_a'>Output A</label>
+      <select name='output_a'>
+        <option value='1'>Universe 1</option>
+        <option value='2'>Universe 2</option>
+      </select>
+
+      <label for='output_a'>Output B</label>
+      <select name='output_b'>
+        <option value='1'>Universe 1</option>
+        <option value='2'>Universe 2</option>
+      </select>
+
+      <input type='submit' value='Save'>
+    </form>
+  </body>
+</html>
